@@ -1,19 +1,784 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Stranger Things: Pedra Branca Invertida</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
-    <script src="script.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    
+    <title>Stranger Things: Projeto Pedra Branca Invertida</title>
+    
+    <!-- A-Frame e AR.js -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+    
+    <!-- Estilos CSS -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        .container {
+            padding: 20px;
+            max-width: 100vw;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            color: #cccccc;
+            opacity: 0.8;
+        }
+        
+        .game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .status-panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #ff6b6b;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 350px;
+        }
+        
+        .progress {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .progress-text {
+            font-size: 16px;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ffa500);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .mission-info {
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .mission-name {
+            font-size: 18px;
+            color: #ffa500;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .mission-distance {
+            font-size: 14px;
+            color: #cccccc;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 350px;
+        }
+        
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #cccccc;
+            border: 1px solid #666;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top: 3px solid #ff6b6b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-progress {
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto;
+        }
+        
+        .loading-progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .loading-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ffa500);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .loading-percentage {
+            text-align: center;
+            font-size: 14px;
+            color: #cccccc;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            color: #ff6666;
+            text-align: center;
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #44ff44;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            color: #66ff66;
+            text-align: center;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* AR Scene Styles */
+        a-scene {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+        }
+        
+        .ar-overlay {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            text-align: center;
+        }
+        
+        .close-ar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1002;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid #ff6b6b;
+            border-radius: 15px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .modal-header h2 {
+            color: #ff6b6b;
+            margin: 0;
+            font-size: 20px;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            color: #ffffff;
+        }
+        
+        .progress-summary {
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        .stat-label {
+            display: block;
+            font-size: 12px;
+            color: #cccccc;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            display: block;
+            font-size: 18px;
+            color: #ffa500;
+            font-weight: bold;
+        }
+        
+        .achievements {
+            margin-top: 25px;
+            text-align: left;
+        }
+        
+        .achievements h4 {
+            color: #ffa500;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .achievement-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .achievement-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 165, 0, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ffa500;
+        }
+        
+        .achievement-icon {
+            font-size: 24px;
+            margin-right: 15px;
+        }
+        
+        .achievement-info {
+            flex: 1;
+        }
+        
+        .achievement-name {
+            font-weight: bold;
+            color: #ffa500;
+            margin-bottom: 3px;
+        }
+        
+        .achievement-desc {
+            font-size: 12px;
+            color: #cccccc;
+        }
+        
+        /* Navigation Menu */
+        .nav-menu {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #ff6b6b;
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-around;
+            z-index: 1500;
+        }
+        
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: #cccccc;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover, .nav-btn.active {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        
+        .nav-icon {
+            font-size: 20px;
+        }
+        
+        /* Status Indicators */
+        .status-indicators {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1500;
+        }
+        
+        .status-indicator {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #cccccc;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-indicator.good {
+            border-color: #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .status-indicator.warning {
+            border-color: #FFC107;
+            color: #FFC107;
+        }
+        
+        .status-indicator.error {
+            border-color: #F44336;
+            color: #F44336;
+        }
+        
+        /* Mission List */
+        .mission-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .mission-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .mission-item:hover {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+        
+        .mission-item.completed {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+        
+        .mission-item.active {
+            border-color: #ffa500;
+            background: rgba(255, 165, 0, 0.1);
+        }
+        
+        .mission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .mission-name {
+            font-weight: bold;
+            color: #ffffff;
+        }
+        
+        .mission-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .mission-description {
+            font-size: 14px;
+            color: #cccccc;
+            margin-bottom: 8px;
+        }
+        
+        .mission-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .title {
+                font-size: 20px;
+            }
+            
+            .status-panel {
+                padding: 15px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-menu {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+            }
+            
+            .status-indicators {
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <a-scene
-        vr-mode-ui="enabled: false"
-        arjs="sourceType: webcam; debugUIEnabled: false;"
-        renderer="antialias: true; alpha: true">
-        <a-camera gps-camera rotation-reader arjs-look-at="#target"></a-camera>
-        <!-- Elementos AR serão adicionados dinamicamente via JS -->
+    <div class="container">
+        <div class="header">
+            <h1 class="title">STRANGER THINGS</h1>
+            <p class="subtitle">Projeto Pedra Branca Invertida</p>
+        </div>
+        
+        <div class="game-area">
+            <!-- Loading Screen -->
+            <div id="loading-screen" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Carregando o Mundo Invertido...</p>
+                <div style="margin-top: 30px;">
+                    <button id="skip-loading" class="btn btn-primary">🧪 Pular para Teste</button>
+                </div>
+            </div>
+            
+            <!-- Welcome Screen -->
+            <div id="welcome-screen" class="hidden">
+                <div class="status-panel">
+                    <h2 style="text-align: center; margin-bottom: 15px; color: #ffa500;">Bem-vindo ao Mundo Invertido!</h2>
+                    <p style="text-align: center; line-height: 1.5; margin-bottom: 20px;">
+                        Explore o bairro Pedra Branca e descubra os segredos do Mundo Invertido com a ajuda do Dustin. 
+                        Você precisará permitir acesso à sua localização e câmera para uma experiência completa.
+                    </p>
+                    <div style="text-align: center;">
+                        <p style="font-size: 14px; color: #cccccc; margin-bottom: 20px;">
+                            📍 7 locais para explorar<br>
+                            🎧 Áudios exclusivos do Dustin<br>
+                            👾 Criaturas em realidade aumentada
+                        </p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="start-game" class="btn btn-primary">Iniciar Jornada</button>
+                    <button id="test-mode" class="btn btn-secondary">🧪 Modo Teste</button>
+                    <button id="help-btn" class="btn btn-secondary">Como Jogar</button>
+                </div>
+            </div>
+            
+            <!-- Game Screen -->
+            <div id="game-screen" class="hidden">
+                <div class="status-panel">
+                    <div class="progress">
+                        <div class="progress-text">
+                            <span id="completed-missions">0</span> / <span id="total-missions">7</span> Missões Concluídas
+                        </div>
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mission-info">
+                        <div id="current-mission" class="mission-name">Procurando missões...</div>
+                        <div id="mission-distance" class="mission-distance">Ativando GPS...</div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="activate-ar" class="btn btn-primary hidden">Ativar Realidade Aumentada</button>
+                    <button id="play-audio" class="btn btn-secondary hidden">Reproduzir Áudio</button>
+                </div>
+            </div>
+            
+            <!-- Help Screen -->
+            <div id="help-screen" class="hidden">
+                <div class="status-panel">
+                    <h2 style="text-align: center; margin-bottom: 15px; color: #ffa500;">Como Jogar</h2>
+                    <div style="text-align: left; line-height: 1.6;">
+                        <p><strong>🎯 Objetivo:</strong> Visite todos os 7 locais no bairro Pedra Branca</p>
+                        <br>
+                        <p><strong>📱 Como funciona:</strong></p>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li>Caminhe pelo bairro com o GPS ativado</li>
+                            <li>Sinta a vibração ao se aproximar de um local</li>
+                            <li>Ouça as mensagens do Dustin</li>
+                            <li>Use a câmera para ver criaturas em AR</li>
+                        </ul>
+                        <br>
+                        <p><strong>📍 Locais:</strong> Casa, Poste, Lago, UNISUL, Ponte, Floresta, Praça</p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="back-to-welcome" class="btn btn-primary">Voltar</button>
+                </div>
+            </div>
+            
+            <!-- Completion Screen -->
+            <div id="completion-screen" class="hidden">
+                <div class="status-panel">
+                    <h2 style="text-align: center; margin-bottom: 15px; color: #ffa500;">Parabéns!</h2>
+                    <p style="text-align: center; line-height: 1.5; margin-bottom: 20px;">
+                        Você completou todas as missões e explorou todo o Mundo Invertido do bairro Pedra Branca!
+                    </p>
+                    <div style="text-align: center;">
+                        <p style="font-size: 18px; color: #ff6b6b; font-weight: bold;">
+                            🏆 MISSÃO CUMPRIDA 🏆
+                        </p>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="restart-game" class="btn btn-primary">Jogar Novamente</button>
+                </div>
+            </div>
+            
+            <!-- Error Messages -->
+            <div id="error-container"></div>
+        </div>
+    </div>
+    
+    <!-- AR Scene (hidden by default) -->
+    <a-scene id="ar-scene" class="hidden" embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;">
+        <a-camera gps-camera rotation-reader></a-camera>
     </a-scene>
+    
+    <!-- AR Overlay -->
+    <div id="ar-overlay" class="ar-overlay hidden">
+        <div id="ar-mission-name">Missão Ativa</div>
+        <div style="font-size: 14px; margin-top: 5px;">Mova o celular para encontrar o objeto</div>
+    </div>
+    
+    <!-- Close AR Button -->
+    <button id="close-ar" class="close-ar hidden">×</button>
+    
+    <!-- Status Indicators -->
+    <div id="status-indicators" class="status-indicators hidden">
+        <div id="gps-status" class="status-indicator">
+            <span>📍</span>
+            <span>GPS</span>
+        </div>
+        <div id="camera-status" class="status-indicator">
+            <span>📷</span>
+            <span>Câmera</span>
+        </div>
+        <div id="audio-status" class="status-indicator">
+            <span>🎵</span>
+            <span>Áudio</span>
+        </div>
+    </div>
+    
+    <!-- Navigation Menu -->
+    <div id="nav-menu" class="nav-menu hidden">
+        <button id="nav-game" class="nav-btn active">
+            <span class="nav-icon">🎮</span>
+            <span>Jogo</span>
+        </button>
+        <button id="nav-missions" class="nav-btn">
+            <span class="nav-icon">🎯</span>
+            <span>Missões</span>
+        </button>
+        <button id="nav-stats" class="nav-btn">
+            <span class="nav-icon">📊</span>
+            <span>Stats</span>
+        </button>
+        <button id="nav-settings" class="nav-btn">
+            <span class="nav-icon">⚙️</span>
+            <span>Config</span>
+        </button>
+    </div>
+    
+    <!-- Missions Screen -->
+    <div id="missions-screen" class="hidden">
+        <div class="status-panel">
+            <h2 style="text-align: center; margin-bottom: 15px; color: #ffa500;">📍 Missões</h2>
+            <div id="mission-list" class="mission-list">
+                <!-- Missions will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Screen -->
+    <div id="stats-screen" class="hidden">
+        <div class="status-panel">
+            <h2 style="text-align: center; margin-bottom: 15px; color: #ffa500;">📊 Estatísticas</h2>
+            <div id="stats-content">
+                <!-- Stats will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Screen -->
+    <div id="settings-screen" class="hidden">
+        <div class="status-panel">
+            <h2 style="text-align: center; margin-bottom: 15px; color: #ffa500;">⚙️ Configurações</h2>
+            <div id="settings-content">
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="sound-toggle" checked>
+                        🎵 Som habilitado
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        <input type="checkbox" id="vibration-toggle" checked>
+                        📳 Vibração habilitada
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label>
+                        🔊 Volume: <input type="range" id="volume-slider" min="0" max="100" value="80">
+                        <span id="volume-value">80%</span>
+                    </label>
+                </div>
+                <div class="controls" style="margin-top: 20px;">
+                    <button id="clear-progress" class="btn btn-secondary">Limpar Progresso</button>
+                    <button id="export-progress" class="btn btn-secondary">Exportar Dados</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main JavaScript -->
+    <script src="script.js"></script>
 </body>
 </html>
