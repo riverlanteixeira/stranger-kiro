@@ -3012,20 +3012,21 @@ class UIManager {
     try {
       // Solicitar permissão de câmera
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
+        video: { facingMode: "environment" },
       });
 
       // Parar o stream imediatamente (só testamos o acesso)
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
 
       // Permissão concedida, ativar AR
       this.activateARScene(mission);
-
     } catch (error) {
       console.error("❌ Erro ao solicitar câmera:", error);
-      
+
       if (error.name === "NotAllowedError") {
-        this.showError("Permissão de câmera negada. Ative a câmera nas configurações do navegador.");
+        this.showError(
+          "Permissão de câmera negada. Ative a câmera nas configurações do navegador."
+        );
       } else if (error.name === "NotFoundError") {
         this.showError("Câmera não encontrada no dispositivo.");
       } else {
@@ -3043,7 +3044,6 @@ class UIManager {
         // Para missões sem modelo, mostrar experiência alternativa imediatamente
         this.showARAlternative(mission);
       }
-
     } catch (error) {
       console.error("❌ Erro ao ativar cena AR:", error);
       this.showError("Erro ao ativar realidade aumentada.");
@@ -3067,14 +3067,16 @@ class UIManager {
       if (missionName) {
         missionName.textContent = mission.name;
       }
-      
+
       // Adicionar instruções específicas
       const instructions = arOverlay.querySelector("div:last-child");
       if (instructions) {
         if (mission.arModel.includes("portal")) {
-          instructions.textContent = "🌀 Procure pelo portal brilhante do Mundo Invertido!";
+          instructions.textContent =
+            "🌀 Procure pelo portal brilhante do Mundo Invertido!";
         } else if (mission.arModel.includes("demogorgon")) {
-          instructions.textContent = "👾 Cuidado! O Demogorgon está por perto...";
+          instructions.textContent =
+            "👾 Cuidado! O Demogorgon está por perto...";
         }
       }
     }
@@ -3087,8 +3089,10 @@ class UIManager {
     // Criar elemento visual simples no centro da tela
     this.createSimpleARElement(mission);
 
-    this.showSuccess("Realidade Aumentada ativada! Olhe ao redor para encontrar o objeto.");
-    
+    this.showSuccess(
+      "Realidade Aumentada ativada! Olhe ao redor para encontrar o objeto."
+    );
+
     // Vibração de confirmação
     if (navigator.vibrate) {
       navigator.vibrate([200, 100, 200]);
@@ -3104,71 +3108,168 @@ class UIManager {
   }
 
   createSimpleARElement(mission) {
-    // Criar um elemento visual simples que aparece no centro da tela
-    const arElement = document.createElement("div");
-    arElement.id = "simple-ar-element";
-    arElement.style.cssText = `
+    // Criar container AR com modelo 3D real
+    const arContainer = document.createElement("div");
+    arContainer.id = "simple-ar-element";
+    arContainer.style.cssText = `
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       z-index: 1003;
-      text-align: center;
+      background: rgba(0, 0, 0, 0.3);
+    `;
+
+    // Criar cena A-Frame para o modelo 3D
+    const arScene = document.createElement("a-scene");
+    arScene.setAttribute("embedded", "true");
+    arScene.setAttribute("arjs", "sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;");
+    arScene.style.cssText = `
+      width: 100%;
+      height: 100%;
+    `;
+
+    // Adicionar câmera
+    const camera = document.createElement("a-camera");
+    camera.setAttribute("gps-camera", "");
+    camera.setAttribute("rotation-reader", "");
+    arScene.appendChild(camera);
+
+    // Adicionar modelo 3D baseado na missão
+    const modelEntity = document.createElement("a-entity");
+    modelEntity.setAttribute("gltf-model", mission.arModel);
+    
+    if (mission.arModel.includes("portal")) {
+      modelEntity.setAttribute("position", "0 0 -5");
+      modelEntity.setAttribute("scale", "2 2 2");
+      modelEntity.setAttribute("rotation", "0 0 0");
+      
+      // Animação de rotação para o portal
+      const animation = document.createElement("a-animation");
+      animation.setAttribute("attribute", "rotation");
+      animation.setAttribute("dur", "10000");
+      animation.setAttribute("repeat", "indefinite");
+      animation.setAttribute("to", "0 360 0");
+      animation.setAttribute("easing", "linear");
+      modelEntity.appendChild(animation);
+      
+    } else if (mission.arModel.includes("demogorgon")) {
+      modelEntity.setAttribute("position", "0 -1 -3");
+      modelEntity.setAttribute("scale", "1.5 1.5 1.5");
+      modelEntity.setAttribute("rotation", "0 180 0");
+      
+      // Animação de balanço para o demogorgon
+      const animation = document.createElement("a-animation");
+      animation.setAttribute("attribute", "rotation");
+      animation.setAttribute("dur", "4000");
+      animation.setAttribute("repeat", "indefinite");
+      animation.setAttribute("direction", "alternate");
+      animation.setAttribute("to", "0 200 0");
+      animation.setAttribute("easing", "ease-in-out");
+      modelEntity.appendChild(animation);
+    }
+
+    arScene.appendChild(modelEntity);
+    arContainer.appendChild(arScene);
+
+    // Criar overlay com instruções
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      right: 20px;
       background: rgba(0, 0, 0, 0.8);
       border: 2px solid #ff6b6b;
       border-radius: 15px;
-      padding: 20px;
+      padding: 15px;
       color: white;
-      font-size: 18px;
-      animation: pulse 2s infinite;
-      cursor: pointer;
+      text-align: center;
+      font-size: 16px;
+      z-index: 1004;
     `;
 
     if (mission.arModel.includes("portal")) {
-      arElement.innerHTML = `
-        <div style="font-size: 48px; margin-bottom: 10px;">🌀</div>
-        <div>Portal do Mundo Invertido</div>
-        <div style="font-size: 14px; margin-top: 10px; color: #ffa500;">Toque para interagir</div>
+      overlay.innerHTML = `
+        <div style="font-size: 20px; font-weight: bold; color: #ffa500; margin-bottom: 10px;">🌀 Portal do Mundo Invertido</div>
+        <div style="margin-bottom: 10px;">Mova o celular para ver o portal girando!</div>
+        <button id="interact-btn" style="
+          background: linear-gradient(45deg, #ff6b6b, #ffa500);
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+        ">Atravessar Portal</button>
       `;
     } else if (mission.arModel.includes("demogorgon")) {
-      arElement.innerHTML = `
-        <div style="font-size: 48px; margin-bottom: 10px;">👾</div>
-        <div>Demogorgon Detectado!</div>
-        <div style="font-size: 14px; margin-top: 10px; color: #ffa500;">Toque para interagir</div>
+      overlay.innerHTML = `
+        <div style="font-size: 20px; font-weight: bold; color: #ff4444; margin-bottom: 10px;">👾 Demogorgon Detectado!</div>
+        <div style="margin-bottom: 10px;">Cuidado! A criatura está se movendo...</div>
+        <button id="interact-btn" style="
+          background: linear-gradient(45deg, #ff4444, #cc0000);
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+        ">Enfrentar Criatura</button>
       `;
     }
 
-    // Adicionar animação CSS
-    const style = document.createElement("style");
-    style.textContent = `
-      @keyframes pulse {
-        0% { transform: translate(-50%, -50%) scale(1); }
-        50% { transform: translate(-50%, -50%) scale(1.1); }
-        100% { transform: translate(-50%, -50%) scale(1); }
-      }
+    arContainer.appendChild(overlay);
+
+    // Adicionar botão de fechar
+    const closeBtn = document.createElement("button");
+    closeBtn.innerHTML = "×";
+    closeBtn.style.cssText = `
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      cursor: pointer;
+      z-index: 1005;
     `;
-    document.head.appendChild(style);
+    closeBtn.onclick = () => this.deactivateARScene();
+    arContainer.appendChild(closeBtn);
 
-    // Adicionar evento de clique
-    arElement.onclick = () => {
-      // Vibração de interação
-      if (navigator.vibrate) {
-        navigator.vibrate([300, 100, 300, 100, 300]);
-      }
+    // Adicionar evento de interação
+    const interactBtn = overlay.querySelector("#interact-btn");
+    if (interactBtn) {
+      interactBtn.onclick = () => {
+        // Vibração de interação
+        if (navigator.vibrate) {
+          navigator.vibrate([300, 100, 300, 100, 300]);
+        }
 
-      // Mostrar mensagem de sucesso
-      this.showSuccess(`🎯 Você encontrou o ${mission.name}! Missão completada!`);
-      
-      // Completar missão
-      this.completeMission(mission);
-      
-      // Fechar AR após 2 segundos
-      setTimeout(() => {
-        this.deactivateARScene();
-      }, 2000);
-    };
+        // Mostrar mensagem de sucesso
+        this.showSuccess(`🎯 Você encontrou o ${mission.name}! Missão completada!`);
 
-    document.body.appendChild(arElement);
+        // Completar missão
+        this.completeMission(mission);
+
+        // Fechar AR após 2 segundos
+        setTimeout(() => {
+          this.deactivateARScene();
+        }, 2000);
+      };
+    }
+
+    document.body.appendChild(arContainer);
+
+    // Log para debug
+    console.log("✅ Modelo 3D carregado:", mission.arModel);
   }
 
   deactivateARScene() {
@@ -3180,7 +3281,7 @@ class UIManager {
     if (arScene) arScene.classList.add("hidden");
     if (arOverlay) arOverlay.classList.add("hidden");
     if (closeARBtn) closeARBtn.classList.add("hidden");
-    
+
     // Remover elemento AR simples se existir
     if (simpleARElement) {
       simpleARElement.remove();
@@ -3195,7 +3296,7 @@ class UIManager {
   addARModel(mission) {
     // Implementação simplificada para adicionar modelo AR
     console.log("🎯 Adicionando modelo AR:", mission.arModel);
-    
+
     // Aqui você pode adicionar lógica específica para cada modelo
     if (mission.arModel.includes("portal")) {
       console.log("🌀 Portal do Mundo Invertido detectado!");
@@ -3207,17 +3308,22 @@ class UIManager {
   showARAlternative(mission) {
     // Para missões sem AR, mostrar uma experiência alternativa
     const messages = {
-      "poste": "🔦 Aponte a câmera para o poste e imagine portais se abrindo ao seu redor...",
-      "casa": "🏠 Esta casa guarda segredos do Mundo Invertido...",
-      "unisul": "🏫 A universidade esconde laboratórios secretos...",
-      "floresta": "🌲 As árvores sussurram segredos antigos...",
-      "praca": "🏛️ O centro da cidade, onde tudo começou..."
+      poste:
+        "🔦 Aponte a câmera para o poste e imagine portais se abrindo ao seu redor...",
+      casa: "🏠 Esta casa guarda segredos do Mundo Invertido...",
+      unisul: "🏫 A universidade esconde laboratórios secretos...",
+      floresta: "🌲 As árvores sussurram segredos antigos...",
+      praca: "🏛️ O centro da cidade, onde tudo começou...",
     };
 
-    const message = messages[mission.id] || "✨ Use sua imaginação para ver o Mundo Invertido!";
-    
-    alert(`🎭 Experiência Imersiva\n\n${message}\n\n🎵 Ouça atentamente as palavras do Dustin enquanto explora este local misterioso.`);
-    
+    const message =
+      messages[mission.id] ||
+      "✨ Use sua imaginação para ver o Mundo Invertido!";
+
+    alert(
+      `🎭 Experiência Imersiva\n\n${message}\n\n🎵 Ouça atentamente as palavras do Dustin enquanto explora este local misterioso.`
+    );
+
     // Marcar missão como completada após a experiência
     setTimeout(() => {
       this.completeMission(mission);
@@ -3230,9 +3336,9 @@ class UIManager {
       const completed = gameState.get("completedMissions");
       completed.push(mission.id);
       gameState.set("completedMissions", completed);
-      
+
       this.showSuccess(`🏆 Missão "${mission.name}" completada!`);
-      
+
       // Vibração de sucesso
       if (navigator.vibrate) {
         navigator.vibrate([300, 100, 300, 100, 300]);
