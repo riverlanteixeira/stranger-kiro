@@ -903,6 +903,13 @@ class GameEngine {
       }
     }
   }
+
+  skipLoading() {
+    console.log("⏭️ Pulando carregamento para modo teste");
+    gameState.set("isInitialized", true);
+    this.managers.ui = new UIManager(this);
+    this.managers.ui.init();
+    this.managers.ui.showScreen("welcome");
   }
 
   async initializeManagers() {
@@ -3695,31 +3702,17 @@ document.addEventListener("DOMContentLoaded", () => {
     skipLoadingBtn.addEventListener("click", () => {
       console.log("🧪 Pulando loading - iniciando modo teste...");
       
-      // Esconder loading e mostrar welcome
-      document.getElementById("loading-screen").classList.add("hidden");
-      document.getElementById("welcome-screen").classList.remove("hidden");
+      // Esconder loading e mostrar welcome imediatamente
+      const loadingScreen = document.getElementById("loading-screen");
+      const welcomeScreen = document.getElementById("welcome-screen");
       
-      // Criar engine básico se não existir
-      if (!window.gameEngine) {
-        window.gameEngine = new GameEngine();
-        
-        // Inicializar managers básicos
-        window.gameEngine.managers = {
-          ui: new UIManager(window.gameEngine),
-          location: new LocationManager(window.gameEngine),
-          audio: new AudioManager(window.gameEngine),
-          haptic: new HapticManager(),
-          ar: new ARManager(window.gameEngine),
-          mission: new MissionManager(window.gameEngine)
-        };
-        
-        window.gameEngine.managers.ui.init();
-      }
+      if (loadingScreen) loadingScreen.classList.add("hidden");
+      if (welcomeScreen) welcomeScreen.classList.remove("hidden");
       
-      // Ativar modo teste automaticamente
+      // Mostrar mensagem de teste
       setTimeout(() => {
-        startTestModeDirectly();
-      }, 1000);
+        alert("🧪 Modo de teste ativado!\n\nVocê pode agora:\n• Clicar em 'Iniciar Jornada' para o jogo normal\n• Clicar em 'Modo Teste' para simular missões\n• Explorar as outras opções");
+      }, 500);
     });
   }
   
