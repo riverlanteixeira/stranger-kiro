@@ -828,11 +828,11 @@ class GameEngine {
 
       // Mostrar progresso
       this.updateLoadingProgress("Inicializando sistemas...", 20);
-      
+
       // Inicializar UI primeiro
       this.managers.ui = new UIManager(this);
       this.managers.ui.init();
-      
+
       this.updateLoadingProgress("Carregando managers...", 40);
 
       // Inicializar outros managers
@@ -841,21 +841,21 @@ class GameEngine {
       this.managers.haptic = new HapticManager();
       this.managers.ar = new ARManager(this);
       this.managers.mission = new MissionManager(this);
-      
+
       this.updateLoadingProgress("Configurando sistema...", 60);
 
       // Configurar listeners de estado
       this.setupStateListeners();
-      
+
       this.updateLoadingProgress("Carregando progresso...", 80);
 
       // Carregar progresso salvo
       await this.loadGameProgress();
-      
+
       this.updateLoadingProgress("Finalizando...", 100);
 
       // Aguardar um pouco para mostrar 100%
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Marcar como inicializado
       gameState.set("isInitialized", true);
@@ -863,26 +863,25 @@ class GameEngine {
 
       // Mostrar tela de boas-vindas
       this.managers.ui.showScreen("welcome");
-      
     } catch (error) {
       console.error("❌ Erro ao inicializar o jogo:", error);
       this.handleInitializationError(error);
     }
   }
-  
+
   updateLoadingProgress(message, percentage) {
-    const loadingScreen = document.getElementById('loading-screen');
+    const loadingScreen = document.getElementById("loading-screen");
     if (loadingScreen) {
-      let progressText = loadingScreen.querySelector('p');
+      let progressText = loadingScreen.querySelector("p");
       if (progressText) {
         progressText.textContent = message;
       }
-      
+
       // Adicionar barra de progresso se não existir
-      let progressContainer = loadingScreen.querySelector('.loading-progress');
+      let progressContainer = loadingScreen.querySelector(".loading-progress");
       if (!progressContainer) {
-        progressContainer = document.createElement('div');
-        progressContainer.className = 'loading-progress';
+        progressContainer = document.createElement("div");
+        progressContainer.className = "loading-progress";
         progressContainer.innerHTML = `
           <div class="loading-progress-bar">
             <div class="loading-progress-fill"></div>
@@ -891,15 +890,19 @@ class GameEngine {
         `;
         loadingScreen.appendChild(progressContainer);
       }
-      
-      const progressFill = progressContainer.querySelector('.loading-progress-fill');
-      const progressPercentage = progressContainer.querySelector('.loading-percentage');
-      
+
+      const progressFill = progressContainer.querySelector(
+        ".loading-progress-fill"
+      );
+      const progressPercentage = progressContainer.querySelector(
+        ".loading-percentage"
+      );
+
       if (progressFill) {
-        progressFill.style.width = percentage + '%';
+        progressFill.style.width = percentage + "%";
       }
       if (progressPercentage) {
-        progressPercentage.textContent = percentage + '%';
+        progressPercentage.textContent = percentage + "%";
       }
     }
   }
@@ -2994,34 +2997,145 @@ class UIManager {
       return;
     }
 
+    console.log("🎥 Tentando ativar AR para missão:", activeMission.name);
+
+    // Verificar se tem modelo AR
     if (!activeMission.arModel) {
-      this.showError("Esta missão não possui elementos de realidade aumentada");
+      // Para missões sem modelo AR, mostrar uma experiência alternativa
+      this.showARAlternative(activeMission);
       return;
     }
 
-    if (!gameState.get("permissions.camera")) {
-      this.showError("Permissão de câmera necessária para AR");
-      return;
+    // Tentar solicitar permissão de câmera
+    this.requestCameraAndActivateAR(activeMission);
+  }
+
+  async requestCameraAndActivateAR(mission) {
+    try {
+      // Solicitar permissão de câmera
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+
+      // Parar o stream imediatamente (só testamos o acesso)
+      stream.getTracks().forEach(track => track.stop());
+
+      // Permissão concedida, ativar AR
+      this.activateARScene(mission);
+
+    } catch (error) {
+      console.error("❌ Erro ao solicitar câmera:", error);
+      
+      if (error.name === "NotAllowedError") {
+        this.showError("Permissão de câmera negada. Ative a câmera nas configurações do navegador.");
+      } else if (error.name === "NotFoundError") {
+        this.showError("Câmera não encontrada no dispositivo.");
+      } else {
+        this.showError("Erro ao acessar a câmera. Verifique as permissões.");
+      }
     }
+  }
 
-    // Ativar AR
-    const success = this.gameEngine.managers.ar.activateAR();
+  activateARScene(mission) {
+    try {
+      // Mostrar cena AR
+      const arScene = document.getElementById("ar-scene");
+      const arOverlay = document.getElementById("ar-overlay");
+      const closeARBtn = document.getElementById("close-ar");
 
-    if (success) {
-      // Carregar modelo 3D da missão ativa
-      this.gameEngine.managers.ar.loadModel(
-        activeMission.arModel,
-        activeMission
-      );
+      if (arScene) {
+        arScene.classList.remove("hidden");
+        console.log("✅ Cena AR mostrada");
+      }
 
-      // Atualizar overlay AR
-      this.gameEngine.managers.ar.updateAROverlay(activeMission);
+      if (arOverlay) {
+        arOverlay.classList.remove("hidden");
+        const missionName = arOverlay.querySelector("#ar-mission-name");
+        if (missionName) {
+          missionName.textContent = mission.name;
+        }
+      }
 
-      this.showSuccess(
-        "Realidade Aumentada ativada! Mova o celular para encontrar o objeto."
-      );
-    } else {
-      this.showError("Não foi possível ativar a realidade aumentada");
+      if (closeARBtn) {
+        closeARBtn.classList.remove("hidden");
+        closeARBtn.onclick = () => this.deactivateARScene();
+      }
+
+      // Adicionar modelo se existir
+      if (mission.arModel) {
+        this.addARModel(mission);
+      }
+
+      this.showSuccess("Realidade Aumentada ativada! Mova o celular para explorar.");
+      
+      // Vibração de confirmação
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+      }
+
+    } catch (error) {
+      console.error("❌ Erro ao ativar cena AR:", error);
+      this.showError("Erro ao ativar realidade aumentada.");
+    }
+  }
+
+  deactivateARScene() {
+    const arScene = document.getElementById("ar-scene");
+    const arOverlay = document.getElementById("ar-overlay");
+    const closeARBtn = document.getElementById("close-ar");
+
+    if (arScene) arScene.classList.add("hidden");
+    if (arOverlay) arOverlay.classList.add("hidden");
+    if (closeARBtn) closeARBtn.classList.add("hidden");
+
+    console.log("🎥 AR desativado");
+  }
+
+  addARModel(mission) {
+    // Implementação simplificada para adicionar modelo AR
+    console.log("🎯 Adicionando modelo AR:", mission.arModel);
+    
+    // Aqui você pode adicionar lógica específica para cada modelo
+    if (mission.arModel.includes("portal")) {
+      console.log("🌀 Portal do Mundo Invertido detectado!");
+    } else if (mission.arModel.includes("demogorgon")) {
+      console.log("👾 Demogorgon detectado!");
+    }
+  }
+
+  showARAlternative(mission) {
+    // Para missões sem AR, mostrar uma experiência alternativa
+    const messages = {
+      "poste": "🔦 Aponte a câmera para o poste e imagine portais se abrindo ao seu redor...",
+      "casa": "🏠 Esta casa guarda segredos do Mundo Invertido...",
+      "unisul": "🏫 A universidade esconde laboratórios secretos...",
+      "floresta": "🌲 As árvores sussurram segredos antigos...",
+      "praca": "🏛️ O centro da cidade, onde tudo começou..."
+    };
+
+    const message = messages[mission.id] || "✨ Use sua imaginação para ver o Mundo Invertido!";
+    
+    alert(`🎭 Experiência Imersiva\n\n${message}\n\n🎵 Ouça atentamente as palavras do Dustin enquanto explora este local misterioso.`);
+    
+    // Marcar missão como completada após a experiência
+    setTimeout(() => {
+      this.completeMission(mission);
+    }, 2000);
+  }
+
+  completeMission(mission) {
+    if (!mission.completed) {
+      mission.completed = true;
+      const completed = gameState.get("completedMissions");
+      completed.push(mission.id);
+      gameState.set("completedMissions", completed);
+      
+      this.showSuccess(`🏆 Missão "${mission.name}" completada!`);
+      
+      // Vibração de sucesso
+      if (navigator.vibrate) {
+        navigator.vibrate([300, 100, 300, 100, 300]);
+      }
     }
   }
 
@@ -3683,7 +3797,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Criar e inicializar o engine do jogo
   window.gameEngine = new GameEngine();
-  
+
   // Inicialização com timeout para evitar travamento
   setTimeout(() => {
     try {
@@ -3695,32 +3809,34 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("welcome-screen").classList.remove("hidden");
     }
   }, 1000);
-  
+
   // Botão para pular loading e ir direto para teste
   const skipLoadingBtn = document.getElementById("skip-loading");
   if (skipLoadingBtn) {
     skipLoadingBtn.addEventListener("click", () => {
       console.log("🧪 Pulando loading - iniciando modo teste...");
-      
+
       // Esconder loading e mostrar welcome imediatamente
       const loadingScreen = document.getElementById("loading-screen");
       const welcomeScreen = document.getElementById("welcome-screen");
-      
+
       if (loadingScreen) loadingScreen.classList.add("hidden");
       if (welcomeScreen) welcomeScreen.classList.remove("hidden");
-      
+
       // Mostrar mensagem de teste
       setTimeout(() => {
-        alert("🧪 Modo de teste ativado!\n\nVocê pode agora:\n• Clicar em 'Iniciar Jornada' para o jogo normal\n• Clicar em 'Modo Teste' para simular missões\n• Explorar as outras opções");
+        alert(
+          "🧪 Modo de teste ativado!\n\nVocê pode agora:\n• Clicar em 'Iniciar Jornada' para o jogo normal\n• Clicar em 'Modo Teste' para simular missões\n• Explorar as outras opções"
+        );
       }, 500);
     });
   }
-  
+
   // Fallback: se após 5 segundos ainda estiver na tela de loading, forçar boas-vindas
   setTimeout(() => {
     const loadingScreen = document.getElementById("loading-screen");
     const welcomeScreen = document.getElementById("welcome-screen");
-    
+
     if (loadingScreen && !loadingScreen.classList.contains("hidden")) {
       console.log("🔧 Forçando saída da tela de loading...");
       loadingScreen.classList.add("hidden");
@@ -3887,116 +4003,125 @@ window.addEventListener("unhandledrejection", (event) => {
 
 // Função para iniciar modo de teste diretamente
 function startTestModeDirectly() {
-  console.log('🧪 Iniciando modo de teste direto...');
-  
+  console.log("🧪 Iniciando modo de teste direto...");
+
   // Forçar permissões como concedidas
-  gameState.set('permissions.location', true);
-  gameState.set('permissions.camera', true);
-  
+  gameState.set("permissions.location", true);
+  gameState.set("permissions.camera", true);
+
   // Simular localização próxima à primeira missão
   const testPosition = {
     coords: {
       latitude: -27.630876175110835, // Casa
       longitude: -48.67969706159946,
-      accuracy: 10
+      accuracy: 10,
     },
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
-  
+
   // Atualizar posição
   if (window.gameEngine && window.gameEngine.onLocationUpdate) {
     window.gameEngine.onLocationUpdate(testPosition);
   }
-  
+
   // Simular ativação da primeira missão
   setTimeout(() => {
     const firstMission = MISSIONS[0]; // Casa
-    console.log('🎯 Simulando ativação da missão:', firstMission.name);
-    
+    console.log("🎯 Simulando ativação da missão:", firstMission.name);
+
     // Marcar como ativa
-    gameState.set('activeMission', firstMission);
-    
+    gameState.set("activeMission", firstMission);
+
     // Tentar reproduzir áudio
     const audio = new Audio(firstMission.audioFile);
     audio.volume = 0.8;
-    audio.play().then(() => {
-      console.log('🎵 Áudio reproduzido:', firstMission.audioFile);
-    }).catch(error => {
-      console.log('⚠️ Erro no áudio (normal em alguns navegadores):', error.message);
-    });
-    
+    audio
+      .play()
+      .then(() => {
+        console.log("🎵 Áudio reproduzido:", firstMission.audioFile);
+      })
+      .catch((error) => {
+        console.log(
+          "⚠️ Erro no áudio (normal em alguns navegadores):",
+          error.message
+        );
+      });
+
     // Vibração se suportada
-    if ('vibrate' in navigator) {
+    if ("vibrate" in navigator) {
       navigator.vibrate([200, 100, 200, 100, 200]);
-      console.log('📳 Vibração ativada');
+      console.log("📳 Vibração ativada");
     }
-    
+
     // Mostrar mensagem de sucesso
-    alert(`🎯 Missão "${firstMission.name}" ativada!\n\n🎵 Áudio do Dustin reproduzindo...\n📳 Vibração ativada\n\nO jogo está funcionando!`);
-    
+    alert(
+      `🎯 Missão "${firstMission.name}" ativada!\n\n🎵 Áudio do Dustin reproduzindo...\n📳 Vibração ativada\n\nO jogo está funcionando!`
+    );
+
     // Simular próximas missões
     simulateAllMissions();
-    
   }, 2000);
 }
 
 // Simular todas as missões sequencialmente
 function simulateAllMissions() {
   let currentIndex = 0;
-  
+
   const simulateNext = () => {
     if (currentIndex >= MISSIONS.length) {
-      console.log('🏆 Todas as missões simuladas!');
-      alert('🏆 Parabéns! Você completou todas as 7 missões do Mundo Invertido!');
+      console.log("🏆 Todas as missões simuladas!");
+      alert(
+        "🏆 Parabéns! Você completou todas as 7 missões do Mundo Invertido!"
+      );
       return;
     }
-    
+
     const mission = MISSIONS[currentIndex];
     console.log(`🎯 Simulando missão ${currentIndex + 1}/7: ${mission.name}`);
-    
+
     // Simular posição próxima à missão
     const testPosition = {
       coords: {
         latitude: mission.coordinates.lat + (Math.random() - 0.5) * 0.0001,
         longitude: mission.coordinates.lng + (Math.random() - 0.5) * 0.0001,
-        accuracy: 15
+        accuracy: 15,
       },
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
+
     // Atualizar posição
     if (window.gameEngine && window.gameEngine.onLocationUpdate) {
       window.gameEngine.onLocationUpdate(testPosition);
     }
-    
+
     // Reproduzir áudio da missão
     const audio = new Audio(mission.audioFile);
     audio.volume = 0.6;
-    audio.play().catch(error => {
-      console.log('⚠️ Áudio não pôde ser reproduzido:', error.message);
+    audio.play().catch((error) => {
+      console.log("⚠️ Áudio não pôde ser reproduzido:", error.message);
     });
-    
+
     // Vibração
-    if ('vibrate' in navigator) {
+    if ("vibrate" in navigator) {
       navigator.vibrate([100, 50, 100]);
     }
-    
+
     // Marcar como concluída
     mission.completed = true;
-    const completedMissions = gameState.get('completedMissions') || [];
+    const completedMissions = gameState.get("completedMissions") || [];
     if (!completedMissions.includes(mission.id)) {
       completedMissions.push(mission.id);
-      gameState.set('completedMissions', completedMissions);
+      gameState.set("completedMissions", completedMissions);
     }
-    
+
     console.log(`✅ Missão "${mission.name}" concluída!`);
-    
+
     currentIndex++;
-    
+
     // Próxima missão em 3 segundos
     setTimeout(simulateNext, 3000);
   };
-  
+
   // Começar simulação em 5 segundos
   setTimeout(simulateNext, 5000);
 }
