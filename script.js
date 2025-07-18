@@ -1095,10 +1095,8 @@ class GameEngine {
     // Vibração de ativação
     this.managers.haptic.vibrateActivation();
 
-    // Mostrar controles AR se disponível
-    if (mission.arModel && gameState.get("permissions.camera")) {
-      this.managers.ui.showARControls(true);
-    }
+    // Mostrar controles AR para todas as missões (com experiências diferentes)
+    this.managers.ui.showARControls(true);
 
     // Atualizar UI
     this.managers.ui.updateMissionInfo(mission);
@@ -3038,39 +3036,12 @@ class UIManager {
 
   activateARScene(mission) {
     try {
-      // Mostrar cena AR
-      const arScene = document.getElementById("ar-scene");
-      const arOverlay = document.getElementById("ar-overlay");
-      const closeARBtn = document.getElementById("close-ar");
-
-      if (arScene) {
-        arScene.classList.remove("hidden");
-        console.log("✅ Cena AR mostrada");
-      }
-
-      if (arOverlay) {
-        arOverlay.classList.remove("hidden");
-        const missionName = arOverlay.querySelector("#ar-mission-name");
-        if (missionName) {
-          missionName.textContent = mission.name;
-        }
-      }
-
-      if (closeARBtn) {
-        closeARBtn.classList.remove("hidden");
-        closeARBtn.onclick = () => this.deactivateARScene();
-      }
-
-      // Adicionar modelo se existir
+      // Para missões com modelo AR, tentar ativar AR real
       if (mission.arModel) {
-        this.addARModel(mission);
-      }
-
-      this.showSuccess("Realidade Aumentada ativada! Mova o celular para explorar.");
-      
-      // Vibração de confirmação
-      if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200]);
+        this.activateRealAR(mission);
+      } else {
+        // Para missões sem modelo, mostrar experiência alternativa imediatamente
+        this.showARAlternative(mission);
       }
 
     } catch (error) {
@@ -3079,14 +3050,144 @@ class UIManager {
     }
   }
 
-  deactivateARScene() {
+  activateRealAR(mission) {
+    // Mostrar cena AR
     const arScene = document.getElementById("ar-scene");
     const arOverlay = document.getElementById("ar-overlay");
     const closeARBtn = document.getElementById("close-ar");
 
+    if (arScene) {
+      arScene.classList.remove("hidden");
+      console.log("✅ Cena AR mostrada");
+    }
+
+    if (arOverlay) {
+      arOverlay.classList.remove("hidden");
+      const missionName = arOverlay.querySelector("#ar-mission-name");
+      if (missionName) {
+        missionName.textContent = mission.name;
+      }
+      
+      // Adicionar instruções específicas
+      const instructions = arOverlay.querySelector("div:last-child");
+      if (instructions) {
+        if (mission.arModel.includes("portal")) {
+          instructions.textContent = "🌀 Procure pelo portal brilhante do Mundo Invertido!";
+        } else if (mission.arModel.includes("demogorgon")) {
+          instructions.textContent = "👾 Cuidado! O Demogorgon está por perto...";
+        }
+      }
+    }
+
+    if (closeARBtn) {
+      closeARBtn.classList.remove("hidden");
+      closeARBtn.onclick = () => this.deactivateARScene();
+    }
+
+    // Criar elemento visual simples no centro da tela
+    this.createSimpleARElement(mission);
+
+    this.showSuccess("Realidade Aumentada ativada! Olhe ao redor para encontrar o objeto.");
+    
+    // Vibração de confirmação
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 100, 200]);
+    }
+
+    // Auto-completar após 10 segundos se não interagir
+    setTimeout(() => {
+      if (gameState.get("isARActive")) {
+        this.completeMission(mission);
+        this.deactivateARScene();
+      }
+    }, 10000);
+  }
+
+  createSimpleARElement(mission) {
+    // Criar um elemento visual simples que aparece no centro da tela
+    const arElement = document.createElement("div");
+    arElement.id = "simple-ar-element";
+    arElement.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1003;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid #ff6b6b;
+      border-radius: 15px;
+      padding: 20px;
+      color: white;
+      font-size: 18px;
+      animation: pulse 2s infinite;
+      cursor: pointer;
+    `;
+
+    if (mission.arModel.includes("portal")) {
+      arElement.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 10px;">🌀</div>
+        <div>Portal do Mundo Invertido</div>
+        <div style="font-size: 14px; margin-top: 10px; color: #ffa500;">Toque para interagir</div>
+      `;
+    } else if (mission.arModel.includes("demogorgon")) {
+      arElement.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 10px;">👾</div>
+        <div>Demogorgon Detectado!</div>
+        <div style="font-size: 14px; margin-top: 10px; color: #ffa500;">Toque para interagir</div>
+      `;
+    }
+
+    // Adicionar animação CSS
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes pulse {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        50% { transform: translate(-50%, -50%) scale(1.1); }
+        100% { transform: translate(-50%, -50%) scale(1); }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Adicionar evento de clique
+    arElement.onclick = () => {
+      // Vibração de interação
+      if (navigator.vibrate) {
+        navigator.vibrate([300, 100, 300, 100, 300]);
+      }
+
+      // Mostrar mensagem de sucesso
+      this.showSuccess(`🎯 Você encontrou o ${mission.name}! Missão completada!`);
+      
+      // Completar missão
+      this.completeMission(mission);
+      
+      // Fechar AR após 2 segundos
+      setTimeout(() => {
+        this.deactivateARScene();
+      }, 2000);
+    };
+
+    document.body.appendChild(arElement);
+  }
+
+  deactivateARScene() {
+    const arScene = document.getElementById("ar-scene");
+    const arOverlay = document.getElementById("ar-overlay");
+    const closeARBtn = document.getElementById("close-ar");
+    const simpleARElement = document.getElementById("simple-ar-element");
+
     if (arScene) arScene.classList.add("hidden");
     if (arOverlay) arOverlay.classList.add("hidden");
     if (closeARBtn) closeARBtn.classList.add("hidden");
+    
+    // Remover elemento AR simples se existir
+    if (simpleARElement) {
+      simpleARElement.remove();
+    }
+
+    // Atualizar estado
+    gameState.set("isARActive", false);
 
     console.log("🎥 AR desativado");
   }
