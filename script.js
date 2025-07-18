@@ -21,6 +21,9 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
+// Conjunto para rastrear pontos visitados
+const visitedPoints = new Set();
+
 // Verificar permissões e iniciar geolocalização
 if (navigator.geolocation) {
     navigator.geolocation.watchPosition(position => {
@@ -29,7 +32,9 @@ if (navigator.geolocation) {
 
         points.forEach(point => {
             const distance = calculateDistance(userLat, userLng, point.lat, point.lng);
-            if (distance < 30) { // ~30 metros
+            if (distance < 30 && !visitedPoints.has(point.name)) { // ~30 metros e não visitado
+                visitedPoints.add(point.name); // Marcar como visitado
+
                 // Vibração
                 if (navigator.vibrate) navigator.vibrate(200);
 
